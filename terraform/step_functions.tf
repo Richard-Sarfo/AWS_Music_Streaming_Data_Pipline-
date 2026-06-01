@@ -23,7 +23,8 @@ locals {
           Next        = "Reject"
           ResultPath  = "$.error"
         }]
-        Next = "Transform"
+        ResultPath = "$.validate"
+        Next       = "Transform"
       }
 
       Transform = {
@@ -68,7 +69,8 @@ locals {
           Next        = "NotifyFailure"
           ResultPath  = "$.error"
         }]
-        Next = "Archive"
+        ResultPath = "$.load"
+        Next       = "Archive"
       }
 
       Archive = {
@@ -79,7 +81,8 @@ locals {
           "CopySource.$" = "States.Format('{}/{}', $.bucket, $.key)"
           "Key.$"        = "States.Format('archive/{}', $.key)"
         }
-        Next = "DeleteOriginal"
+        ResultPath = "$.archive"
+        Next       = "DeleteOriginal"
       }
 
       DeleteOriginal = {
@@ -111,7 +114,14 @@ locals {
           Subject     = "P1 streaming pipeline failure"
           "Message.$" = "$"
         }
-        End = true
+        ResultPath = "$.notification"
+        Next       = "FailExecution"
+      }
+
+      FailExecution = {
+        Type  = "Fail"
+        Error = "PipelineFailed"
+        Cause = "One of Validate, Transform, or Load failed. See execution input for details."
       }
     }
   })
