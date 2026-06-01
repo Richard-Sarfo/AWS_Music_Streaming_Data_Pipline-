@@ -69,10 +69,10 @@ def to_genre_item(row):
     return {
         "pk": f"GENRE#{row['genre']}",
         "sk": f"DATE#{row['date']}",
-        "listen_count": int(row["listen_count"]),
-        "unique_listeners": int(row["unique_listeners"]),
-        "total_listen_seconds": decimal.Decimal(str(row["total_listen_seconds"])),
-        "avg_listen_seconds_per_user": decimal.Decimal(str(row["avg_listen_seconds_per_user"])),
+        "listen_count": int(row.get("listen_count") or 0),
+        "unique_listeners": int(row.get("unique_listeners") or 0),
+        "total_listen_seconds": decimal.Decimal(str(row.get("total_listen_seconds") or 0)),
+        "avg_listen_seconds_per_user": decimal.Decimal(str(row.get("avg_listen_seconds_per_user") or 0)),
         "top3_songs": row.get("top3_songs") or [],
     }
 
