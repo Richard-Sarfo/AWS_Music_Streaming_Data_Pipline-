@@ -1,0 +1,316 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 820" font-family="-apple-system, Segoe UI, Roboto, Arial, sans-serif" role="img" aria-labelledby="title desc">
+  <title id="title">AWS Music Streaming Data Pipeline — Architecture</title>
+  <desc id="desc">End-to-end view: S3 stream uploads trigger EventBridge, which starts a Step Functions state machine that validates, transforms, and loads daily genre KPIs into DynamoDB. Failed files are routed to a rejected zone and an SNS topic publishes alerts.</desc>
+
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1f2328"/>
+    </marker>
+    <marker id="ar-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#cf222e"/>
+    </marker>
+    <marker id="ar-dash" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6e7781"/>
+    </marker>
+    <style>
+      .title       { font-size: 22px; font-weight: 700; fill: #1f2328; }
+      .subtitle    { font-size: 13px; fill: #57606a; }
+      .cluster-lbl { font-size: 12px; font-weight: 700; fill: #57606a; letter-spacing: 0.5px; }
+      .cluster     { fill: #f6f8fa; stroke: #d0d7de; stroke-width: 1.5; rx: 10; ry: 10; }
+      .svc-name    { font-size: 13px; font-weight: 600; fill: #1f2328; }
+      .svc-sub     { font-size: 11px; fill: #57606a; }
+      .badge       { font-size: 10px; font-weight: 700; fill: #ffffff; }
+      .arrow       { stroke: #1f2328; stroke-width: 2; fill: none; marker-end: url(#ar); }
+      .arrow-dash  { stroke: #6e7781; stroke-width: 1.6; stroke-dasharray: 5,4; fill: none; marker-end: url(#ar-dash); }
+      .arrow-fail  { stroke: #cf222e; stroke-width: 2; stroke-dasharray: 6,4; fill: none; marker-end: url(#ar-fail); }
+      .edge-lbl    { font-size: 11px; fill: #57606a; font-weight: 600; }
+      .edge-lbl-fail { font-size: 11px; fill: #cf222e; font-weight: 700; }
+    </style>
+  </defs>
+
+  <rect width="1400" height="820" fill="#ffffff"/>
+  <text x="700" y="38"  class="title"    text-anchor="middle">AWS Music Streaming Data Pipeline</text>
+  <text x="700" y="60"  class="subtitle" text-anchor="middle">Event-driven ingestion · Glue validate / transform / load · DynamoDB serving · SNS alerts</text>
+
+  <!-- ===== Producer ===== -->
+  <g transform="translate(30,360)">
+    <rect width="120" height="60" rx="8" ry="8" fill="#ffffff" stroke="#6e7781" stroke-width="1.5"/>
+    <text x="60" y="26" class="svc-name" text-anchor="middle">Upstream</text>
+    <text x="60" y="44" class="svc-name" text-anchor="middle">producer</text>
+  </g>
+
+  <!-- ===== S3 data bucket cluster ===== -->
+  <rect x="190" y="100" width="240" height="620" class="cluster"/>
+  <text x="310" y="124" class="cluster-lbl" text-anchor="middle">S3 DATA BUCKET</text>
+  <text x="310" y="140" class="svc-sub"     text-anchor="middle">versioned · SSE-AES256 · public access blocked</text>
+
+  <!-- raw/streams (trigger zone, highlighted) -->
+  <g transform="translate(210,160)">
+    <rect width="200" height="56" rx="8" ry="8" fill="#dafbe1" stroke="#1a7f37" stroke-width="1.8"/>
+    <rect width="6"   height="56" fill="#1a7f37"/>
+    <text x="22" y="22" class="svc-name">raw/streams/</text>
+    <text x="22" y="40" class="svc-sub">trigger zone · EventBridge source</text>
+  </g>
+  <g transform="translate(210,224)">
+    <rect width="200" height="44" rx="8" ry="8" fill="#ffffff" stroke="#1a7f37" stroke-width="1.5"/>
+    <text x="14" y="20" class="svc-name">raw/songs/</text>
+    <text x="14" y="36" class="svc-sub">dimension (~90k tracks)</text>
+  </g>
+  <g transform="translate(210,276)">
+    <rect width="200" height="44" rx="8" ry="8" fill="#ffffff" stroke="#1a7f37" stroke-width="1.5"/>
+    <text x="14" y="20" class="svc-name">raw/users/</text>
+    <text x="14" y="36" class="svc-sub">dimension (50k users)</text>
+  </g>
+  <g transform="translate(210,348)">
+    <rect width="200" height="44" rx="8" ry="8" fill="#ffffff" stroke="#1a7f37" stroke-width="1.5"/>
+    <text x="14" y="20" class="svc-name">processed/kpis/run=*/</text>
+    <text x="14" y="36" class="svc-sub">JSONL outputs from Spark</text>
+  </g>
+  <g transform="translate(210,418)">
+    <rect width="200" height="44" rx="8" ry="8" fill="#ffffff" stroke="#1a7f37" stroke-width="1.5"/>
+    <text x="14" y="20" class="svc-name">archive/</text>
+    <text x="14" y="36" class="svc-sub">Glacier IR @ 90d · expire @ 7y</text>
+  </g>
+  <g transform="translate(210,478)">
+    <rect width="200" height="44" rx="8" ry="8" fill="#fff8c5" stroke="#9a6700" stroke-width="1.5"/>
+    <text x="14" y="20" class="svc-name">rejected/</text>
+    <text x="14" y="36" class="svc-sub">validation failures · expire @ 30d</text>
+  </g>
+  <g transform="translate(210,540)">
+    <rect width="200" height="40" rx="8" ry="8" fill="#ffffff" stroke="#6e7781" stroke-width="1.2"/>
+    <text x="14" y="18" class="svc-name">glue-scripts/</text>
+    <text x="14" y="34" class="svc-sub">auto-uploaded by Terraform</text>
+  </g>
+  <g transform="translate(210,590)">
+    <rect width="200" height="40" rx="8" ry="8" fill="#ffffff" stroke="#6e7781" stroke-width="1.2"/>
+    <text x="14" y="18" class="svc-name">glue-temp/</text>
+    <text x="14" y="34" class="svc-sub">Glue scratch / shuffle</text>
+  </g>
+  <g transform="translate(210,640)">
+    <rect width="200" height="60" rx="8" ry="8" fill="#ffffff" stroke="#1a7f37" stroke-width="1.2"/>
+    <text x="14" y="22" class="svc-name">+ S3 logs bucket</text>
+    <text x="14" y="40" class="svc-sub">s3-access/* (audit)</text>
+    <text x="14" y="56" class="svc-sub">CloudTrail-style access log</text>
+  </g>
+
+  <!-- ===== EventBridge ===== -->
+  <g transform="translate(470,165)">
+    <rect width="130" height="60" rx="8" ry="8" fill="#fff1e5" stroke="#bf8700" stroke-width="1.8"/>
+    <rect width="6" height="60" fill="#bf8700"/>
+    <rect x="80" y="6" width="44" height="14" rx="3" fill="#bf8700"/>
+    <text x="102" y="17" class="badge" text-anchor="middle">EVENTS</text>
+    <text x="22" y="32" class="svc-name">EventBridge</text>
+    <text x="22" y="48" class="svc-sub">rule: ObjectCreated</text>
+  </g>
+
+  <!-- ===== Step Functions cluster ===== -->
+  <rect x="640" y="100" width="320" height="620" class="cluster"/>
+  <text x="800" y="124" class="cluster-lbl" text-anchor="middle">STEP FUNCTIONS STATE MACHINE</text>
+  <text x="800" y="140" class="svc-sub"     text-anchor="middle">p1-streaming-dev-pipeline</text>
+
+  <!-- Validate -->
+  <g transform="translate(665,168)">
+    <rect width="270" height="60" rx="8" ry="8" fill="#fbefff" stroke="#8250df" stroke-width="1.8"/>
+    <rect width="6" height="60" fill="#8250df"/>
+    <rect x="216" y="6" width="48" height="14" rx="3" fill="#8250df"/>
+    <text x="240" y="17" class="badge" text-anchor="middle">GLUE</text>
+    <text x="22" y="32" class="svc-name">Validate</text>
+    <text x="22" y="48" class="svc-sub">Python Shell · cols + null-rate &lt; 5%</text>
+  </g>
+  <!-- Transform -->
+  <g transform="translate(665,250)">
+    <rect width="270" height="60" rx="8" ry="8" fill="#fbefff" stroke="#8250df" stroke-width="1.8"/>
+    <rect width="6" height="60" fill="#8250df"/>
+    <rect x="216" y="6" width="48" height="14" rx="3" fill="#8250df"/>
+    <text x="240" y="17" class="badge" text-anchor="middle">GLUE</text>
+    <text x="22" y="32" class="svc-name">Transform</text>
+    <text x="22" y="48" class="svc-sub">PySpark · daily genre KPIs + top-N</text>
+  </g>
+  <!-- Load -->
+  <g transform="translate(665,332)">
+    <rect width="270" height="60" rx="8" ry="8" fill="#fbefff" stroke="#8250df" stroke-width="1.8"/>
+    <rect width="6" height="60" fill="#8250df"/>
+    <rect x="216" y="6" width="48" height="14" rx="3" fill="#8250df"/>
+    <text x="240" y="17" class="badge" text-anchor="middle">GLUE</text>
+    <text x="22" y="32" class="svc-name">Load</text>
+    <text x="22" y="48" class="svc-sub">Python Shell · BatchWriteItem ×25</text>
+  </g>
+  <!-- Archive -->
+  <g transform="translate(665,418)">
+    <rect width="270" height="46" rx="8" ry="8" fill="#dafbe1" stroke="#1a7f37" stroke-width="1.5"/>
+    <text x="22" y="20" class="svc-name">Archive</text>
+    <text x="22" y="36" class="svc-sub">s3:CopyObject → archive/</text>
+  </g>
+  <!-- DeleteOriginal -->
+  <g transform="translate(665,470)">
+    <rect width="270" height="46" rx="8" ry="8" fill="#dafbe1" stroke="#1a7f37" stroke-width="1.5"/>
+    <text x="22" y="20" class="svc-name">DeleteOriginal</text>
+    <text x="22" y="36" class="svc-sub">s3:DeleteObject from raw/streams/</text>
+  </g>
+  <!-- Reject -->
+  <g transform="translate(665,548)">
+    <rect width="130" height="60" rx="8" ry="8" fill="#fff8c5" stroke="#9a6700" stroke-width="1.5"/>
+    <text x="14" y="22" class="svc-name">Reject</text>
+    <text x="14" y="38" class="svc-sub">CopyObject</text>
+    <text x="14" y="52" class="svc-sub">→ rejected/</text>
+  </g>
+  <!-- NotifyFailure -->
+  <g transform="translate(805,548)">
+    <rect width="130" height="60" rx="8" ry="8" fill="#ffebe9" stroke="#cf222e" stroke-width="1.8"/>
+    <text x="14" y="22" class="svc-name">NotifyFailure</text>
+    <text x="14" y="38" class="svc-sub">sns:Publish</text>
+    <text x="14" y="52" class="svc-sub">alerts topic</text>
+  </g>
+
+  <!-- ===== DynamoDB cluster ===== -->
+  <rect x="1010" y="248" width="260" height="180" class="cluster"/>
+  <text x="1140" y="272" class="cluster-lbl" text-anchor="middle">DYNAMODB</text>
+  <text x="1140" y="288" class="svc-sub"     text-anchor="middle">PAY_PER_REQUEST · PITR · SSE</text>
+
+  <g transform="translate(1030,300)">
+    <rect width="220" height="50" rx="8" ry="8" fill="#ddf4ff" stroke="#0969da" stroke-width="1.8"/>
+    <rect width="6" height="50" fill="#0969da"/>
+    <text x="18" y="22" class="svc-name">genre-daily-kpis</text>
+    <text x="18" y="38" class="svc-sub">pk=GENRE#g · sk=DATE#d</text>
+  </g>
+  <g transform="translate(1030,360)">
+    <rect width="220" height="50" rx="8" ry="8" fill="#ddf4ff" stroke="#0969da" stroke-width="1.8"/>
+    <rect width="6" height="50" fill="#0969da"/>
+    <text x="18" y="22" class="svc-name">top-genres-daily</text>
+    <text x="18" y="38" class="svc-sub">pk=DATE#d · sk=RANK#n</text>
+  </g>
+
+  <!-- ===== SNS topic ===== -->
+  <g transform="translate(1030,560)">
+    <rect width="220" height="56" rx="8" ry="8" fill="#fff1e5" stroke="#bf8700" stroke-width="1.8"/>
+    <rect width="6" height="56" fill="#bf8700"/>
+    <rect x="158" y="8" width="50" height="14" rx="3" fill="#bf8700"/>
+    <text x="183" y="19" class="badge" text-anchor="middle">SNS</text>
+    <text x="18" y="28" class="svc-name">alerts topic</text>
+    <text x="18" y="44" class="svc-sub">email subscription</text>
+  </g>
+
+  <!-- ===== Downstream apps ===== -->
+  <g transform="translate(1290,340)">
+    <rect width="100" height="56" rx="8" ry="8" fill="#ffffff" stroke="#6e7781" stroke-width="1.5"/>
+    <text x="50" y="24" class="svc-name" text-anchor="middle">Downstream</text>
+    <text x="50" y="42" class="svc-name" text-anchor="middle">apps / BI</text>
+  </g>
+
+  <!-- ===== Email subscriber ===== -->
+  <g transform="translate(1290,570)">
+    <rect width="100" height="42" rx="8" ry="8" fill="#ffffff" stroke="#6e7781" stroke-width="1.5"/>
+    <text x="50" y="26" class="svc-name" text-anchor="middle">Email</text>
+  </g>
+
+  <!-- ===== CloudWatch Logs ===== -->
+  <g transform="translate(640,732)">
+    <rect width="320" height="44" rx="8" ry="8" fill="#fbefff" stroke="#8250df" stroke-width="1.2"/>
+    <text x="14" y="20" class="svc-name">CloudWatch Logs</text>
+    <text x="14" y="36" class="svc-sub">/aws/vendedlogs/states/* · /aws-glue/jobs/*</text>
+  </g>
+
+  <!-- ===== ARROWS ===== -->
+  <!-- Producer → raw/streams/ -->
+  <path class="arrow" d="M150,390 L208,188"/>
+  <text x="172" y="280" class="edge-lbl" transform="rotate(-66 172 280)">PUT *.csv</text>
+
+  <!-- raw/streams/ → EventBridge -->
+  <path class="arrow" d="M410,188 L467,193"/>
+  <text x="438" y="180" class="edge-lbl" text-anchor="middle">event</text>
+
+  <!-- EventBridge → Validate -->
+  <path class="arrow" d="M600,195 L663,198"/>
+  <text x="630" y="186" class="edge-lbl" text-anchor="middle">StartExec</text>
+
+  <!-- Validate → Transform (ok) -->
+  <path class="arrow" d="M800,228 L800,250"/>
+  <text x="810" y="244" class="edge-lbl">ok</text>
+
+  <!-- Transform → Load (ok) -->
+  <path class="arrow" d="M800,310 L800,332"/>
+  <text x="810" y="326" class="edge-lbl">ok</text>
+
+  <!-- Load → Archive (ok) -->
+  <path class="arrow" d="M800,392 L800,418"/>
+  <text x="810" y="412" class="edge-lbl">ok</text>
+
+  <!-- Archive → DeleteOriginal -->
+  <path class="arrow" d="M800,464 L800,470"/>
+
+  <!-- Validate → Reject (fail) -->
+  <path class="arrow-fail" d="M680,228 C 645,260 645,500 680,548"/>
+  <text x="610" y="412" class="edge-lbl-fail">on fail</text>
+
+  <!-- Transform → NotifyFailure (fail) -->
+  <path class="arrow-fail" d="M920,310 C 985,330 985,510 870,548"/>
+  <text x="958" y="430" class="edge-lbl-fail">on fail</text>
+
+  <!-- Load → NotifyFailure (fail) -->
+  <path class="arrow-fail" d="M920,392 C 970,440 950,520 870,549"/>
+
+  <!-- Reject → NotifyFailure -->
+  <path class="arrow" d="M795,578 L805,578"/>
+
+  <!-- DeleteOriginal → raw/streams/ (loop back, dashed) -->
+  <path class="arrow-dash" d="M665,493 C 540,500 480,300 410,205"/>
+  <text x="495" y="318" class="edge-lbl">delete</text>
+
+  <!-- Archive → archive/ S3 (dashed write) -->
+  <path class="arrow-dash" d="M665,441 C 540,450 480,450 410,440"/>
+  <text x="500" y="430" class="edge-lbl">copy</text>
+
+  <!-- Reject → rejected/ (dashed write) -->
+  <path class="arrow-dash" d="M665,578 C 540,540 480,510 410,498"/>
+  <text x="500" y="546" class="edge-lbl">copy</text>
+
+  <!-- Transform → processed/kpis/ (dashed write) -->
+  <path class="arrow-dash" d="M665,280 C 540,330 480,360 410,370"/>
+  <text x="500" y="328" class="edge-lbl">write JSONL</text>
+
+  <!-- Load → processed/kpis/ (dashed read) -->
+  <path class="arrow-dash" d="M665,362 C 560,380 470,378 410,375"/>
+  <text x="500" y="395" class="edge-lbl">read JSONL</text>
+
+  <!-- Load → DynamoDB tables -->
+  <path class="arrow" d="M935,355 L1028,325"/>
+  <path class="arrow" d="M935,370 L1028,378"/>
+  <text x="978" y="338" class="edge-lbl">BatchWriteItem</text>
+
+  <!-- DynamoDB → Downstream -->
+  <path class="arrow" d="M1252,325 L1290,355"/>
+  <path class="arrow" d="M1252,378 L1290,372"/>
+  <text x="1262" y="392" class="edge-lbl" text-anchor="middle">Query/GetItem</text>
+
+  <!-- NotifyFailure → SNS -->
+  <path class="arrow" d="M935,580 L1028,585"/>
+
+  <!-- SNS → Email -->
+  <path class="arrow" d="M1252,588 L1290,591"/>
+
+  <!-- Step Functions → CloudWatch logs -->
+  <path class="arrow-dash" d="M800,710 L800,732"/>
+  <text x="810" y="726" class="edge-lbl">logs</text>
+
+  <!-- ===== Legend ===== -->
+  <g transform="translate(30,740)">
+    <text x="0" y="0" class="cluster-lbl">LEGEND</text>
+    <line x1="0" y1="20" x2="40" y2="20" class="arrow"/>
+    <text x="48" y="24" class="svc-sub">control flow / API call</text>
+    <line x1="200" y1="20" x2="240" y2="20" class="arrow-dash"/>
+    <text x="248" y="24" class="svc-sub">data read / write</text>
+    <line x1="380" y1="20" x2="420" y2="20" class="arrow-fail"/>
+    <text x="428" y="24" class="svc-sub">failure branch</text>
+    <rect x="540" y="13" width="14" height="14" fill="#dafbe1" stroke="#1a7f37"/>
+    <text x="560" y="24" class="svc-sub">S3 storage</text>
+    <rect x="630" y="13" width="14" height="14" fill="#fbefff" stroke="#8250df"/>
+    <text x="650" y="24" class="svc-sub">Glue / SFN</text>
+    <rect x="730" y="13" width="14" height="14" fill="#ddf4ff" stroke="#0969da"/>
+    <text x="750" y="24" class="svc-sub">DynamoDB</text>
+    <rect x="830" y="13" width="14" height="14" fill="#fff1e5" stroke="#bf8700"/>
+    <text x="850" y="24" class="svc-sub">EventBridge / SNS</text>
+    <rect x="970" y="13" width="14" height="14" fill="#ffebe9" stroke="#cf222e"/>
+    <text x="990" y="24" class="svc-sub">failure handler</text>
+  </g>
+</svg>
