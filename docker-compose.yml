@@ -1,0 +1,15 @@
+services:
+  tf:
+    image: hashicorp/terraform:1.9.8
+    working_dir: /work/terraform
+    env_file: .env
+    volumes:
+      - ./:/work
+    entrypoint: terraform
+
+  aws:
+    image: amazon/aws-cli:2.17.0
+    env_file: .env
+    volumes:
+      - ./:/work
+    working_dir: /work
