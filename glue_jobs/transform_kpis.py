@@ -30,6 +30,7 @@ spark = (
 
 streams = (
     spark.read.option("header", True)
+    .option("escape", "\"")
     .csv(args["input_s3"])
     .withColumn("listen_time", F.to_timestamp("listen_time"))
     .withColumn("date", F.to_date("listen_time"))
@@ -37,6 +38,7 @@ streams = (
 
 songs = (
     spark.read.option("header", True)
+    .option("escape", "\"")
     .csv(args["songs_s3"])
     .select(
         F.col("track_id"),
