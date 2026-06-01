@@ -8,39 +8,9 @@ The infrastructure is 100% Terraform-managed; the runtime is fully serverless (S
 
 ## Architecture
 
-```
-                 ┌────────────────────────────────────────────────────────────┐
-                 │                      AWS Account                            │
-                 │                                                             │
-   New stream    │   ┌──────────┐   ObjectCreated   ┌────────────┐            │
-   batch (CSV)   │   │ S3 data  │ ───────────────▶ │ EventBridge│            │
-   ───────────▶  │   │  bucket  │                   │   rule     │            │
-                 │   │ raw/...  │                   └──────┬─────┘            │
-                 │   └──────────┘                          ▼                  │
-                 │                              ┌─────────────────────┐       │
-                 │                              │   Step Functions    │       │
-                 │                              │   state machine     │       │
-                 │                              └──────────┬──────────┘       │
-                 │            ┌─────────────────┬──────────┼──────────┬─────┐ │
-                 │            ▼                 ▼          ▼          ▼     ▼ │
-                 │       ┌──────────┐    ┌──────────┐ ┌──────────┐ ┌──────┐  │
-                 │       │ Validate │    │Transform │ │   Load   │ │Archive│ │
-                 │       │(PyShell) │    │ (Spark)  │ │(PyShell) │ │ (S3)  │ │
-                 │       └────┬─────┘    └────┬─────┘ └────┬─────┘ └───────┘  │
-                 │            │ fail          │            │                  │
-                 │            ▼               ▼            ▼                  │
-                 │      rejected/        processed/   DynamoDB tables         │
-                 │            │           kpis/run=*       │                  │
-                 │            └────────────┐               │                  │
-                 │                         ▼               ▼                  │
-                 │                    ┌────────┐    ┌──────────────┐         │
-                 │                    │  SNS   │    │ Downstream   │         │
-                 │                    │ alerts │    │ apps / BI    │         │
-                 │                    └────┬───┘    └──────────────┘         │
-                 └─────────────────────────┼────────────────────────────────────┘
-                                           ▼
-                                       Email
-```
+![AWS Music Streaming Data Pipeline architecture diagram](docs/architecture.svg)
+
+Failure branches are marked in red, dashed grey arrows are S3 read/write operations, and solid black arrows are control-plane calls (EventBridge → Step Functions → Glue).
 
 ### Why each component
 
